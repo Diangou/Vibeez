@@ -3,6 +3,8 @@ import { Heart, Play, Music2, TrendingUp } from 'lucide-react';
 import { useFavorites } from '../context/FavoritesContext';
 import { YouTubePlayerBar } from '../components/YouTubePlayerBar';
 import type { Artist } from '../repository/FavoritesRepository';
+import { ByNameStrategy, BySortStrategy } from '../strategy/filterStrategies';
+
 
 interface FavoritesPageProps {
   onGoExplore: () => void;
@@ -21,18 +23,22 @@ export function FavoritesPage({ onGoExplore }: FavoritesPageProps) {
       setPlayingArtist(null);
     }
   };
+  
+const getSortedFavorites = () => {
+    const artists = [...favorites];
 
-  const getSortedFavorites = () => {
-    const sorted = [...favorites];
-
-    if (sortBy === 'a-z') {
-      return sorted.sort((a, b) => a.name.localeCompare(b.name));
-    }
-    if (sortBy === 'random') {
-      return sorted.sort(() => Math.random() - 0.5);
-    }
-    return sorted;
-  };
+  // On récupère les artistes du mood sélectionné
+  // Si l'utilisateur veut trier de A à Z, on utilise la stratégie ByNameStrategy
+  if (sortBy === 'a-z') {
+    return new ByNameStrategy().filter(artists);
+  }
+  // Si l'utilisateur veut un tri aléatoire, on utilise BySortStrategy avec 'random'
+  if (sortBy === 'random') {
+    return new BySortStrategy('random').filter(artists);
+  }
+  // Sinon, on utilise BySortStrategy avec 'popular' (donc par défaut)
+  return new BySortStrategy('popular').filter(artists);
+};
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
