@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { YouTubePlayerBar } from './components/YouTubePlayerBar';
 import { Toast } from './components/Toast';
 import { Heart, Play, TrendingUp } from 'lucide-react';
+import config from './config';
 import './index.css';
 
 interface Mood {
@@ -37,69 +38,6 @@ const moodAccentColors: Record<string, string> = {
   hype: '#ffd200',
 };
 
-const artistsByMood: Record<string, Artist[]> = {
-  chill: [
-    { id: 'a1', name: 'Lofi Beats', image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop', listeners: '2.4M' },
-    { id: 'a2', name: 'Billie Eilish', image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop', listeners: '5.8M' },
-    { id: 'a3', name: 'Bon Iver', image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop', listeners: '3.2M' },
-    { id: 'a4', name: 'Norah Jones', image: 'https://images.unsplash.com/photo-1487180144351-b8472da7d491?w=400&h=400&fit=crop', listeners: '4.1M' },
-    { id: 'a5', name: 'James Blake', image: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=400&h=400&fit=crop', listeners: '2.9M' },
-    { id: 'a6', name: 'Cigarettes After Sex', image: 'https://images.unsplash.com/photo-1446057032654-9d8885db76c6?w=400&h=400&fit=crop', listeners: '3.7M' },
-    { id: 'a7', name: 'Bonobo', image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop', listeners: '2.6M' },
-    { id: 'a8', name: 'FKJ', image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop', listeners: '3.3M' },
-  ],
-  energetic: [
-    { id: 'b1', name: 'Dua Lipa', image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop', listeners: '6.2M' },
-    { id: 'b2', name: 'The Weeknd', image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop', listeners: '7.8M' },
-    { id: 'b3', name: 'Calvin Harris', image: 'https://images.unsplash.com/photo-1487180144351-b8472da7d491?w=400&h=400&fit=crop', listeners: '5.4M' },
-    { id: 'b4', name: 'Daft Punk', image: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=400&h=400&fit=crop', listeners: '6.9M' },
-    { id: 'b5', name: 'Ariana Grande', image: 'https://images.unsplash.com/photo-1446057032654-9d8885db76c6?w=400&h=400&fit=crop', listeners: '8.1M' },
-    { id: 'b6', name: 'Drake', image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop', listeners: '9.3M' },
-    { id: 'b7', name: 'David Guetta', image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop', listeners: '5.7M' },
-    { id: 'b8', name: 'Swedish House Mafia', image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop', listeners: '4.8M' },
-  ],
-  sad: [
-    { id: 'c1', name: 'Adele', image: 'https://images.unsplash.com/photo-1487180144351-b8472da7d491?w=400&h=400&fit=crop', listeners: '7.2M' },
-    { id: 'c2', name: 'Sam Smith', image: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=400&h=400&fit=crop', listeners: '5.9M' },
-    { id: 'c3', name: 'Lewis Capaldi', image: 'https://images.unsplash.com/photo-1446057032654-9d8885db76c6?w=400&h=400&fit=crop', listeners: '4.3M' },
-    { id: 'c4', name: 'Lana Del Rey', image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop', listeners: '6.1M' },
-    { id: 'c5', name: 'Radiohead', image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop', listeners: '5.4M' },
-    { id: 'c6', name: 'The Smiths', image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop', listeners: '4.7M' },
-    { id: 'c7', name: 'Mitski', image: 'https://images.unsplash.com/photo-1487180144351-b8472da7d491?w=400&h=400&fit=crop', listeners: '3.8M' },
-    { id: 'c8', name: 'Phoebe Bridgers', image: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=400&h=400&fit=crop', listeners: '4.2M' },
-  ],
-  focus: [
-    { id: 'd1', name: 'Hans Zimmer', image: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=400&h=400&fit=crop', listeners: '3.9M' },
-    { id: 'd2', name: 'Ludovico Einaudi', image: 'https://images.unsplash.com/photo-1446057032654-9d8885db76c6?w=400&h=400&fit=crop', listeners: '4.6M' },
-    { id: 'd3', name: 'Ólafur Arnalds', image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop', listeners: '2.8M' },
-    { id: 'd4', name: 'Max Richter', image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop', listeners: '3.4M' },
-    { id: 'd5', name: 'Nils Frahm', image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop', listeners: '2.9M' },
-    { id: 'd6', name: 'Brain.fm', image: 'https://images.unsplash.com/photo-1487180144351-b8472da7d491?w=400&h=400&fit=crop', listeners: '1.8M' },
-    { id: 'd7', name: 'Yiruma', image: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=400&h=400&fit=crop', listeners: '3.2M' },
-    { id: 'd8', name: 'Explosions in the Sky', image: 'https://images.unsplash.com/photo-1446057032654-9d8885db76c6?w=400&h=400&fit=crop', listeners: '2.7M' },
-  ],
-  romantic: [
-    { id: 'e1', name: 'Frank Ocean', image: 'https://images.unsplash.com/photo-1446057032654-9d8885db76c6?w=400&h=400&fit=crop', listeners: '6.7M' },
-    { id: 'e2', name: 'SZA', image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop', listeners: '7.4M' },
-    { id: 'e3', name: 'John Legend', image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop', listeners: '5.8M' },
-    { id: 'e4', name: 'Alicia Keys', image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop', listeners: '6.2M' },
-    { id: 'e5', name: 'Ed Sheeran', image: 'https://images.unsplash.com/photo-1487180144351-b8472da7d491?w=400&h=400&fit=crop', listeners: '8.9M' },
-    { id: 'e6', name: 'Bruno Mars', image: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=400&h=400&fit=crop', listeners: '7.1M' },
-    { id: 'e7', name: 'H.E.R.', image: 'https://images.unsplash.com/photo-1446057032654-9d8885db76c6?w=400&h=400&fit=crop', listeners: '4.9M' },
-    { id: 'e8', name: 'Daniel Caesar', image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop', listeners: '5.3M' },
-  ],
-  hype: [
-    { id: 'f1', name: 'Travis Scott', image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop', listeners: '8.6M' },
-    { id: 'f2', name: 'Kanye West', image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop', listeners: '9.2M' },
-    { id: 'f3', name: 'Migos', image: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=400&h=400&fit=crop', listeners: '7.3M' },
-    { id: 'f4', name: 'Post Malone', image: 'https://images.unsplash.com/photo-1487180144351-b8472da7d491?w=400&h=400&fit=crop', listeners: '8.9M' },
-    { id: 'f5', name: 'Lil Uzi Vert', image: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=400&h=400&fit=crop', listeners: '7.8M' },
-    { id: 'f6', name: 'Future', image: 'https://images.unsplash.com/photo-1446057032654-9d8885db76c6?w=400&h=400&fit=crop', listeners: '8.1M' },
-    { id: 'f7', name: '21 Savage', image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop', listeners: '7.5M' },
-    { id: 'f8', name: 'Playboi Carti', image: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=400&h=400&fit=crop', listeners: '6.9M' },
-  ],
-};
-
 type SortOption = 'popular' | 'a-z' | 'random';
 
 function App() {
@@ -108,6 +46,63 @@ function App() {
   const [playingArtist, setPlayingArtist] = useState<Artist | null>(null);
   const [toast, setToast] = useState<{ message: string; icon?: string } | null>(null);
   const [favorites, setFavorites] = useState<Artist[]>([]);
+  const [loadingArtists, setLoadingArtists] = useState(false);
+  const [loadedArtists, setLoadedArtists] = useState<Record<string, Artist[]>>({});
+
+  /**
+   * Récupère les artistes depuis l'API Last.fm pour un mood donné
+   */
+  const fetchArtistsForMood = async (moodName: string) => {
+    if (loadedArtists[moodName]) {
+      return; // Données en cache
+    }
+
+    setLoadingArtists(true);
+    const abortController = new AbortController();
+    const timeoutId = setTimeout(() => abortController.abort(), config.defaultTimeout);
+
+    try {
+      const response = await fetch(
+        `${config.apiBaseUrl}?method=tag.getTopArtists&tag=${encodeURIComponent(moodName.toLowerCase())}&api_key=${config.apiKey}&limit=${config.pageSize}&format=json`,
+        { signal: abortController.signal }
+      );
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const artists: Artist[] = (data.topartists?.artist || []).map((artist: any) => ({
+        id: artist.name.toLowerCase().replace(/\s+/g, '-'),
+        name: artist.name,
+        image: artist.image?.[3]?.['#text'] || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=400&h=400&fit=crop',
+        listeners: parseInt(artist.listeners).toLocaleString(),
+      }));
+
+      setLoadedArtists(prev => ({ ...prev, [moodName]: artists }));
+      setToast({ message: `${artists.length} artists loaded for ${moodName}`, icon: '🎵' });
+    } catch (error) {
+      console.error('Error fetching artists:', error);
+      setToast({ message: 'Failed to load artists. Please check your API key.', icon: '❌' });
+      // Pas de fallback - les données viennent uniquement de l'API
+      setLoadedArtists(prev => ({ ...prev, [moodName]: [] }));
+    } finally {
+      clearTimeout(timeoutId);
+      setLoadingArtists(false);
+    }
+  };
+
+  /**
+   * Charge les artistes quand un mood est sélectionné
+   */
+  useEffect(() => {
+    if (selectedMood) {
+      const mood = moods.find(m => m.id === selectedMood);
+      if (mood) {
+        fetchArtistsForMood(mood.id);
+      }
+    }
+  }, [selectedMood]);
 
   const handleMoodSelect = (moodId: string) => {
     setSelectedMood(moodId);
@@ -132,7 +127,9 @@ function App() {
 
   const getSortedArtists = () => {
     if (!selectedMood) return [];
-    const artists = [...artistsByMood[selectedMood]];
+    
+    // Utilise uniquement les artistes chargés depuis l'API
+    const artists = [...(loadedArtists[selectedMood] || [])];
 
     if (sortBy === 'a-z') {
       return artists.sort((a, b) => a.name.localeCompare(b.name));
@@ -197,43 +194,54 @@ function App() {
                 <span>Top artists for {selectedMoodData.name}</span>
                 <span className="text-5xl">{selectedMoodData.emoji}</span>
               </h2>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setSortBy('popular')}
-                  className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all flex items-center gap-2 ${
-                    sortBy === 'popular'
-                      ? 'bg-white text-black'
-                      : 'bg-white/10 text-white/80 hover:bg-white/20'
-                  }`}
-                >
-                  <TrendingUp size={16} />
-                  Popular
-                </button>
-                <button
-                  onClick={() => setSortBy('a-z')}
-                  className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
-                    sortBy === 'a-z'
-                      ? 'bg-white text-black'
-                      : 'bg-white/10 text-white/80 hover:bg-white/20'
-                  }`}
-                >
-                  A→Z
-                </button>
-                <button
-                  onClick={() => setSortBy('random')}
-                  className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
-                    sortBy === 'random'
-                      ? 'bg-white text-black'
-                      : 'bg-white/10 text-white/80 hover:bg-white/20'
-                  }`}
-                >
-                  🎲 Random
-                </button>
-              </div>
+              {loadingArtists ? (
+                <div className="text-white/60 text-sm">Loading artists...</div>
+              ) : (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setSortBy('popular')}
+                    className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all flex items-center gap-2 ${
+                      sortBy === 'popular'
+                        ? 'bg-white text-black'
+                        : 'bg-white/10 text-white/80 hover:bg-white/20'
+                    }`}
+                  >
+                    <TrendingUp size={16} />
+                    Popular
+                  </button>
+                  <button
+                    onClick={() => setSortBy('a-z')}
+                    className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
+                      sortBy === 'a-z'
+                        ? 'bg-white text-black'
+                        : 'bg-white/10 text-white/80 hover:bg-white/20'
+                    }`}
+                  >
+                    A→Z
+                  </button>
+                  <button
+                    onClick={() => setSortBy('random')}
+                    className={`px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
+                      sortBy === 'random'
+                        ? 'bg-white text-black'
+                        : 'bg-white/10 text-white/80 hover:bg-white/20'
+                    }`}
+                  >
+                    🎲 Random
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-4 gap-6">
-              {getSortedArtists().map(artist => (
+              {loadingArtists ? (
+                <div className="col-span-4 text-center py-12">
+                  <div className="inline-block">
+                    <div className="w-12 h-12 rounded-full border-4 border-white/20 border-t-white animate-spin"></div>
+                  </div>
+                </div>
+              ) : (
+                getSortedArtists().map(artist => (
                 <div key={artist.id} className="group relative">
                   <div className="relative overflow-hidden rounded-xl aspect-square bg-white/5 mb-3">
                     <img
@@ -274,7 +282,8 @@ function App() {
                     <p className="text-white/50 text-sm">{artist.listeners} listeners</p>
                   </div>
                 </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
         )}
