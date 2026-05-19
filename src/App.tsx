@@ -5,6 +5,7 @@ import { Toast } from './components/Toast';
 import { Heart, Play, TrendingUp } from 'lucide-react';
 import config from './config';
 import './index.css';
+import { ByNameStrategy, BySortStrategy } from './strategy/filterStrategies';
 
 interface Mood {
   id: string;
@@ -154,19 +155,20 @@ function App() {
   };
 
   const getSortedArtists = () => {
-    if (!selectedMood) return [];
-    
-    // Utilise uniquement les artistes chargés depuis l'API
-    const artists = [...(loadedArtists[selectedMood] || [])];
-
-    if (sortBy === 'a-z') {
-      return artists.sort((a, b) => a.name.localeCompare(b.name));
-    }
-    if (sortBy === 'random') {
-      return artists.sort(() => Math.random() - 0.5);
-    }
-    return artists;
-  };
+  if (!selectedMood) return [];
+  // On récupère les artistes du mood sélectionné
+  const artists = [...(loadedArtists[selectedMood] || [])];
+  // Si l'utilisateur veut trier de A à Z, on utilise la stratégie ByNameStrategy
+  if (sortBy === 'a-z') {
+    return new ByNameStrategy().filter(artists);
+  }
+  // Si l'utilisateur veut un tri aléatoire, on utilise BySortStrategy avec 'random'
+  if (sortBy === 'random') {
+    return new BySortStrategy('random').filter(artists);
+  }
+  // Sinon, on utilise BySortStrategy avec 'popular' (donc par défaut)
+  return new BySortStrategy('popular').filter(artists);
+};
 
   const selectedProfile = selectedMood ? MoodFactory.create(selectedMood) : null;
 
