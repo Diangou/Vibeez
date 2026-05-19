@@ -1,6 +1,12 @@
 import { Music2, Heart } from 'lucide-react';
 
-export function Header() {
+interface HeaderProps {
+  onExplore: () => void;
+  onFavorites: () => void;
+  favoritesCount: number;
+}
+
+export function Header({ onExplore, onFavorites, favoritesCount }: HeaderProps) {
   return (
     <header className="bg-black/50 backdrop-blur-sm border-b border-white/10 sticky top-0 z-50">
       <div className="container mx-auto px-8 py-4 flex items-center justify-between">
@@ -12,12 +18,23 @@ export function Header() {
         </div>
 
         <nav className="flex items-center gap-8">
-          <button className="text-white/80 hover:text-white transition-colors">
+          <button
+            type="button"
+            onClick={onExplore}
+            className="text-white/80 hover:text-white transition-colors"
+          >
             Explore
           </button>
-          <button className="flex items-center gap-2 text-white/80 hover:text-white transition-colors">
+          <button
+            type="button"
+            onClick={onFavorites}
+            className="flex items-center gap-3 text-white/80 hover:text-white transition-colors"
+          >
             <Heart size={18} />
-            My Favorites
+            <span>My Favorites</span>
+            <span className="inline-flex items-center justify-center min-w-[1.5rem] rounded-full bg-red-500 px-2 py-1 text-xs font-bold text-white">
+              {favoritesCount}
+            </span>
           </button>
         </nav>
       </div>

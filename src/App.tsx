@@ -3,6 +3,10 @@ import { Header } from './components/Header';
 import { YouTubePlayerBar } from './components/YouTubePlayerBar';
 import { Toast } from './components/Toast';
 import { Heart, Play, TrendingUp } from 'lucide-react';
+import { FavoritesProvider, useFavorites } from './context/FavoritesContext';
+import { eventBus } from './observer/EventBus';
+import FavoritesPage from './pages/FavoritesPage';
+import type { Artist } from './repository/FavoritesRepository';
 import config from './config';
 import './index.css';
 import { ByNameStrategy, BySortStrategy } from './strategy/filterStrategies';
@@ -12,13 +16,6 @@ interface Mood {
   name: string;
   emoji: string;
   gradient: string;
-}
-
-interface Artist {
-  id: string;
-  name: string;
-  image: string;
-  listeners: string;
 }
 
 const moods: Mood[] = [
@@ -65,12 +62,13 @@ class MoodFactory {
 
 type SortOption = 'popular' | 'a-z' | 'random';
 
-function App() {
+type Page = 'home' | 'favorites';
+
+function AppContent() {
+  const [page, setPage] = useState<Page>('home');
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>('popular');
   const [playingArtist, setPlayingArtist] = useState<Artist | null>(null);
-  const [toast, setToast] = useState<{ message: string; icon?: string } | null>(null);
-  const [favorites, setFavorites] = useState<Artist[]>([]);
   const [loadingArtists, setLoadingArtists] = useState(false);
   const [loadedArtists, setLoadedArtists] = useState<Record<string, Artist[]>>({});
 
@@ -109,11 +107,8 @@ function App() {
       }));
 
       setLoadedArtists(prev => ({ ...prev, [moodName]: artists }));
-      setToast({ message: `${artists.length} artists loaded for ${profile?.mood.name}`, icon: profile?.mood.emoji });
     } catch (error) {
       console.error('Error fetching artists:', error);
-      setToast({ message: 'Failed to load artists. Please check your API key.', icon: '❌' });
-      // Pas de fallback - les données viennent uniquement de l'API
       setLoadedArtists(prev => ({ ...prev, [moodName]: [] }));
     } finally {
       clearTimeout(timeoutId);
@@ -136,22 +131,22 @@ function App() {
   const handleMoodSelect = (moodId: string) => {
     setSelectedMood(moodId);
     const mood = moods.find(m => m.id === moodId);
-    setToast({ message: `Mood changed to ${mood?.name}`, icon: mood?.emoji });
-  };
-
-  const handleAddFavorite = (artist: Artist) => {
-    const isFavorited = favorites.some(a => a.id === artist.id);
-    if (!isFavorited) {
-      setFavorites([...favorites, artist]);
-      setToast({ message: `${artist.name} added to favorites`, icon: '💜' });
-    } else {
-      setFavorites(favorites.filter(a => a.id !== artist.id));
-      setToast({ message: `${artist.name} removed from favorites`, icon: '🗑️' });
+    if (mood) {
+      eventBus.emit('mood:changed', { moodName: mood.name, emoji: mood.emoji });
     }
   };
 
-  const isFavorite = (artistId: string) => {
-    return favorites.some(a => a.id === artistId);
+  const showFavoritesPage = () => setPage('favorites');
+  const showHomePage = () => setPage('home');
+
+  const { favorites, addFavorite, removeFavorite, isFavorite } = useFavorites();
+
+  const handleAddFavorite = (artist: Artist) => {
+    if (isFavorite(artist.id)) {
+      removeFavorite(artist.id);
+    } else {
+      addFavorite(artist);
+    }
   };
 
   const getSortedArtists = () => {
@@ -172,9 +167,19 @@ function App() {
 
   const selectedProfile = selectedMood ? MoodFactory.create(selectedMood) : null;
 
+  if (page === 'favorites') {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] text-white pb-24">
+        <Header favoritesCount={favorites.length} onExplore={showHomePage} onFavorites={showFavoritesPage} />
+        <FavoritesPage onGoExplore={showHomePage} />
+        <Toast />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white pb-24">
-      <Header />
+      <Header favoritesCount={favorites.length} onExplore={showHomePage} onFavorites={showFavoritesPage} />
 
       {/* Hero Section */}
       <div
@@ -332,15 +337,16 @@ function App() {
         />
       )}
 
-      {/* Toast */}
-      {toast && (
-        <Toast
-          message={toast.message}
-          icon={toast.icon}
-          onDismiss={() => setToast(null)}
-        />
-      )}
+      <Toast />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <FavoritesProvider>
+      <AppContent />
+    </FavoritesProvider>
   );
 }
 
