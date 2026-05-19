@@ -9,6 +9,7 @@ import FavoritesPage from './pages/FavoritesPage';
 import type { Artist } from './repository/FavoritesRepository';
 import config from './config';
 import './index.css';
+import { ByNameStrategy, BySortStrategy } from './strategy/filterStrategies';
 
 interface Mood {
   id: string;
@@ -18,22 +19,46 @@ interface Mood {
 }
 
 const moods: Mood[] = [
-  { id: 'chill', name: 'Chill', emoji: '🌊', gradient: 'from-[#1a1a4e] to-[#0d7377]' },
+  { id: 'chill',     name: 'Chill',     emoji: '🌊', gradient: 'from-[#1a1a4e] to-[#0d7377]' },
   { id: 'energetic', name: 'Energetic', emoji: '⚡', gradient: 'from-[#ff4e00] to-[#ec9f05]' },
-  { id: 'sad', name: 'Sad', emoji: '🌧️', gradient: 'from-[#2c2c54] to-[#474787]' },
-  { id: 'focus', name: 'Focus', emoji: '🎯', gradient: 'from-[#0f3460] to-[#16213e]' },
-  { id: 'romantic', name: 'Romantic', emoji: '💜', gradient: 'from-[#6a0572] to-[#ab20fd]' },
-  { id: 'hype', name: 'Hype', emoji: '🔥', gradient: 'from-[#f7971e] to-[#ffd200]' },
+  { id: 'sad',       name: 'Sad',       emoji: '🌧️', gradient: 'from-[#2c2c54] to-[#474787]' },
+  { id: 'focus',     name: 'Focus',     emoji: '🎯', gradient: 'from-[#0f3460] to-[#16213e]' },
+  { id: 'romantic',  name: 'Romantic',  emoji: '💜', gradient: 'from-[#6a0572] to-[#ab20fd]' },
+  { id: 'hype',      name: 'Hype',      emoji: '🔥', gradient: 'from-[#f7971e] to-[#ffd200]' },
 ];
 
-const moodAccentColors: Record<string, string> = {
-  chill: '#0d7377',
-  energetic: '#ec9f05',
-  sad: '#474787',
-  focus: '#16213e',
-  romantic: '#ab20fd',
-  hype: '#ffd200',
-};
+interface MoodProfile {
+  mood: Mood;
+  accentColor: string;
+  lastFmTags: string[]; // tags envoyés à l'API Last.fm
+  icon: string;
+}
+
+class MoodFactory {
+  private static readonly configs: Record<string, Omit<MoodProfile, 'mood'>> = {
+    chill:     { accentColor: '#0d7377', lastFmTags: ['ambient', 'lo-fi', 'chillout'],      icon: 'Waves'     },
+    energetic: { accentColor: '#ec9f05', lastFmTags: ['electronic', 'edm', 'workout'],      icon: 'Zap'       },
+    sad:       { accentColor: '#474787', lastFmTags: ['sad', 'melancholic', 'acoustic'],     icon: 'CloudRain' },
+    focus:     { accentColor: '#16213e', lastFmTags: ['study', 'classical', 'minimal'],      icon: 'Target'    },
+    romantic:  { accentColor: '#ab20fd', lastFmTags: ['romantic', 'love', 'rnb', 'soul'],   icon: 'Heart'     },
+    hype:      { accentColor: '#ffd200', lastFmTags: ['hiphop', 'trap', 'rap', 'party'],    icon: 'Flame'     },
+  };
+
+  static create(id: string): MoodProfile | null {
+    const mood = moods.find(m => m.id === id);
+    const cfg  = this.configs[id];
+    if (!mood || !cfg) return null;
+    return { mood, ...cfg };
+  }
+
+  static accentColor(id: string): string {
+    return this.configs[id]?.accentColor ?? '#ffffff';
+  }
+
+  static primaryTag(id: string): string {
+    return this.configs[id]?.lastFmTags[0] ?? id;
+  }
+}
 
 type SortOption = 'popular' | 'a-z' | 'random';
 
@@ -59,6 +84,8 @@ function AppContent() {
     const abortController = new AbortController();
     const timeoutId = setTimeout(() => abortController.abort(), config.defaultTimeout);
 
+    const tag = MoodFactory.primaryTag(moodName);
+
     try {
       const response = await fetch(
         `${config.apiBaseUrl}?method=tag.getTopArtists&tag=${encodeURIComponent(moodName.toLowerCase())}&api_key=${config.apiKey}&limit=${config.pageSize}&format=json`,
@@ -70,6 +97,8 @@ function AppContent() {
       }
 
       const data = await response.json();
+      const profile = MoodFactory.create(moodName);
+
       const artists: Artist[] = (data.topartists?.artist || []).map((artist: any) => ({
         id: artist.name.toLowerCase().replace(/\s+/g, '-'),
         name: artist.name,
@@ -121,21 +150,22 @@ function AppContent() {
   };
 
   const getSortedArtists = () => {
-    if (!selectedMood) return [];
-    
-    // Utilise uniquement les artistes chargés depuis l'API
-    const artists = [...(loadedArtists[selectedMood] || [])];
+  if (!selectedMood) return [];
+  // On récupère les artistes du mood sélectionné
+  const artists = [...(loadedArtists[selectedMood] || [])];
+  // Si l'utilisateur veut trier de A à Z, on utilise la stratégie ByNameStrategy
+  if (sortBy === 'a-z') {
+    return new ByNameStrategy().filter(artists);
+  }
+  // Si l'utilisateur veut un tri aléatoire, on utilise BySortStrategy avec 'random'
+  if (sortBy === 'random') {
+    return new BySortStrategy('random').filter(artists);
+  }
+  // Sinon, on utilise BySortStrategy avec 'popular' (donc par défaut)
+  return new BySortStrategy('popular').filter(artists);
+};
 
-    if (sortBy === 'a-z') {
-      return artists.sort((a, b) => a.name.localeCompare(b.name));
-    }
-    if (sortBy === 'random') {
-      return artists.sort(() => Math.random() - 0.5);
-    }
-    return artists;
-  };
-
-  const selectedMoodData = moods.find(m => m.id === selectedMood);
+  const selectedProfile = selectedMood ? MoodFactory.create(selectedMood) : null;
 
   if (page === 'favorites') {
     return (
@@ -154,8 +184,8 @@ function AppContent() {
       {/* Hero Section */}
       <div
         className={`relative w-full py-24 transition-all duration-700 ${
-          selectedMood
-            ? `bg-gradient-to-br ${moods.find(m => m.id === selectedMood)?.gradient}`
+          selectedProfile
+            ? `bg-gradient-to-br ${selectedProfile.mood.gradient}`
             : 'bg-gradient-to-br from-purple-900/20 to-pink-900/20'
         }`}
       >
@@ -177,7 +207,9 @@ function AppContent() {
                 selectedMood === mood.id ? 'scale-105' : ''
               }`}
               style={{
-                boxShadow: selectedMood === mood.id ? `0 0 0 4px ${moodAccentColors[mood.id]}, 0 0 0 8px #0a0a0a` : undefined,
+                boxShadow: selectedMood === mood.id
+                  ? `0 0 0 4px ${MoodFactory.accentColor(mood.id)}, 0 0 0 8px #0a0a0a`
+                  : undefined,
               }}
             >
               <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZmlsdGVyIGlkPSJub2lzZSI+PGZlVHVyYnVsZW5jZSB0eXBlPSJmcmFjdGFsTm9pc2UiIGJhc2VGcmVxdWVuY3k9IjAuOCIgbnVtT2N0YXZlcz0iNCIvPjwvZmlsdGVyPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbHRlcj0idXJsKCNub2lzZSkiIG9wYWNpdHk9IjAuMDUiLz48L3N2Zz4=')] opacity-50"></div>
@@ -192,12 +224,12 @@ function AppContent() {
         </div>
 
         {/* Artist Results */}
-        {selectedMood && selectedMoodData && (
+        {selectedProfile && (
           <div className="bg-white/5 rounded-3xl p-8 backdrop-blur-sm">
             <div className="flex items-center justify-between mb-8">
               <h2 className="text-4xl font-bold flex items-center gap-3">
-                <span>Top artists for {selectedMoodData.name}</span>
-                <span className="text-5xl">{selectedMoodData.emoji}</span>
+                <span>Top artists for {selectedProfile.mood.name}</span>
+                <span className="text-5xl">{selectedProfile.mood.emoji}</span>
               </h2>
               {loadingArtists ? (
                 <div className="text-white/60 text-sm">Loading artists...</div>
@@ -298,7 +330,7 @@ function AppContent() {
       {playingArtist && selectedMood && (
         <YouTubePlayerBar
           artist={playingArtist}
-          accentColor={moodAccentColors[selectedMood]}
+          accentColor={MoodFactory.accentColor(selectedMood)}
           onClose={() => setPlayingArtist(null)}
           onToggleFavorite={() => handleAddFavorite(playingArtist)}
           isFavorite={isFavorite(playingArtist.id)}
